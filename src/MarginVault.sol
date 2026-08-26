@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./FeeManager.sol";
+import "./PriceOracle.sol";
 
 contract MarginVault {
     struct Position {
@@ -18,8 +19,11 @@ contract MarginVault {
     address public immutable owner;
 
     FeeManager public feeManager;
+    PriceOracle public immutable priceOracle;
 
     uint256 public accumulatedFees;
+
+    // Se mantiene para compatibilidad con la implementación y tests existentes.
     uint256 public currentPrice;
 
     event PositionOpened(address indexed trader, uint256 collateral, uint256 leverage, uint256 entryPrice, bool isLong);
@@ -44,17 +48,28 @@ contract MarginVault {
         maxLeverage = _maxLeverage;
         currentPrice = _initialPrice;
         owner = msg.sender;
+
+        // MarginVault becomes the owner of the Oracle because it deploys it.
+        priceOracle = new PriceOracle(_initialPrice);
     }
 
     receive() external payable {}
 
+    /// @notice Updates the market price through the PriceOracle.
     function setCurrentPrice(uint256 newPrice) external onlyOwner {
         require(newPrice > 0, "Invalid price");
 
         uint256 oldPrice = currentPrice;
+
+        priceOracle.setPrice(newPrice);
         currentPrice = newPrice;
 
         emit PriceUpdated(oldPrice, newPrice);
+    }
+
+    /// @notice Returns the current price stored in the Oracle.
+    function getCurrentPrice() public view returns (uint256) {
+        return priceOracle.getPrice();
     }
 
     function setFeeManager(address _feeManager) external onlyOwner {
@@ -84,11 +99,13 @@ contract MarginVault {
 
         accumulatedFees += fee;
 
+        uint256 entryPrice = priceOracle.getPrice();
+
         positions[msg.sender] = Position({
-            collateral: netCollateral, leverage: leverage, entryPrice: currentPrice, isLong: isLong, isOpen: true
+            collateral: netCollateral, leverage: leverage, entryPrice: entryPrice, isLong: isLong, isOpen: true
         });
 
-        emit PositionOpened(msg.sender, netCollateral, leverage, currentPrice, isLong);
+        emit PositionOpened(msg.sender, netCollateral, leverage, entryPrice, isLong);
     }
 
     function getPnl(address trader) public view returns (int256) {
@@ -96,7 +113,9 @@ contract MarginVault {
 
         require(position.isOpen, "No open position");
 
-        int256 priceDifference = int256(currentPrice) - int256(position.entryPrice);
+        uint256 oraclePrice = priceOracle.getPrice();
+
+        int256 priceDifference = int256(oraclePrice) - int256(position.entryPrice);
 
         int256 pnl =
             (int256(position.collateral) * int256(position.leverage) * priceDifference) / int256(position.entryPrice);
@@ -116,7 +135,6 @@ contract MarginVault {
         int256 pnl = getPnl(msg.sender);
 
         uint256 collateral = position.collateral;
-
         uint256 payout;
 
         if (pnl >= 0) {
