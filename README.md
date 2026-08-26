@@ -43,6 +43,17 @@ This project has not been audited and is not intended for production use.
 
 It is designed to demonstrate Solidity development, smart contract architecture, state management, access control, margin management, and liquidation logic.
 
+## My Role
+
+Designed and implemented the Solidity smart contracts for the MarginVault project, including leveraged position management, margin checks, liquidation logic, price updates, and protocol fee management.
+
+## Technology Stack
+
+- Solidity 0.8.20
+- Ethereum / EVM
+- Smart Contracts
+- DeFi / Leveraged Trading
+
 ## Author
 
 Nicolas Pedernera
