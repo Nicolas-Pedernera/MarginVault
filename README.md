@@ -68,3 +68,16 @@ It is not intended for deployment with real funds without substantial additional
 - `isLiquidatable()` — Checks whether a position can be liquidated.
 - `updatePrice()` — Updates the asset price through the authorized oracle.
 - `transferOwnership()` / `acceptOwnership()` — Two-step ownership management.
+## Security & Limitations
+
+This project is intended for educational and portfolio purposes.
+
+The smart contracts have not been professionally audited and are not intended for production use or real funds.
+
+Before production deployment, the system would require:
+- Comprehensive unit and integration testing
+- Professional smart contract security audit
+- Oracle manipulation and price-feed protection
+- Reentrancy and access-control review
+- Extensive liquidation and solvency testing
+- Deployment and monitoring infrastructure
