@@ -27,37 +27,12 @@ Main contract responsible for leveraged trading positions, collateral, margin re
 
 Manages protocol fees and contract ownership, including fee calculation, fee updates, and secure ownership transfers.
 
-## Technology
+## Technology Stack
 
 - Solidity ^0.8.20
 - Ethereum / EVM
-- Smart Contract Development
-- DeFi
-- Leveraged Trading
-
-## Project Status
-
-Educational / portfolio project.
-
-This project has not been audited and is not intended for production use.
-
-It is designed to demonstrate Solidity development, smart contract architecture, state management, access control, margin management, and liquidation logic.
-
-## My Role
-
-Designed and implemented the Solidity smart contracts for the MarginVault project, including leveraged position management, margin checks, liquidation logic, price updates, and protocol fee management.
-
-## Technology Stack
-
-- Solidity 0.8.20
-- Ethereum / EVM
 - Smart Contracts
 - DeFi / Leveraged Trading
-
-## Author
-
-Nicolas Pedernera
-It is not intended for deployment with real funds without substantial additional development, testing, auditing, and risk-management infrastructure.
 
 ## Core Smart Contract Functions
 
@@ -68,6 +43,20 @@ It is not intended for deployment with real funds without substantial additional
 - `isLiquidatable()` — Checks whether a position can be liquidated.
 - `updatePrice()` — Updates the asset price through the authorized oracle.
 - `transferOwnership()` / `acceptOwnership()` — Two-step ownership management.
+
+## FeeManager.sol
+
+Manages protocol fees and contract ownership.
+
+Core features:
+
+- Configurable protocol fee
+- Maximum fee limit of 20%
+- Fee calculation using basis points
+- Two-step ownership transfer
+- Ownership transfer cancellation
+- Owner-only fee updates
+
 ## Security & Limitations
 
 This project is intended for educational and portfolio purposes.
@@ -75,6 +64,7 @@ This project is intended for educational and portfolio purposes.
 The smart contracts have not been professionally audited and are not intended for production use or real funds.
 
 Before production deployment, the system would require:
+
 - Comprehensive unit and integration testing
 - Professional smart contract security audit
 - Oracle manipulation and price-feed protection
@@ -82,14 +72,16 @@ Before production deployment, the system would require:
 - Extensive liquidation and solvency testing
 - Deployment and monitoring infrastructure
 
-### FeeManager.sol
+## My Role
 
-Manages protocol fees and contract ownership.
+Designed and implemented the Solidity smart contracts for the MarginVault project, including leveraged position management, margin checks, liquidation logic, price updates, and protocol fee management.
 
-Core features:
-- Configurable protocol fee
-- Maximum fee limit of 20%
-- Fee calculation using basis points
-- Two-step ownership transfer
-- Ownership transfer cancellation
-- Owner-only fee updates
+## Project Status
+
+Educational / portfolio project.
+
+## Author
+
+Nicolas Pedernera
+
+This project is not intended for deployment with real funds without substantial additional development, testing, auditing, and risk-management infrastructure.
