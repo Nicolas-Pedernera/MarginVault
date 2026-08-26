@@ -1,0 +1,105 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/// @title FeeManager
+/// @notice Manages protocol fees and two-step ownership transfers.
+contract FeeManager {
+    /// @notice Base denominator for fee calculations (10000 = 100%)
+    uint256 public constant FEE_DENOMINATOR = 10_000;
+
+    /// @notice Maximum allowed fee: 20% = 2000 basis points
+    uint256 public constant MAX_FEE = 2_000;
+
+    /// @notice Current contract owner
+    address public owner;
+
+    /// @notice Proposed new owner
+    address public pendingOwner;
+
+    /// @notice Current protocol fee in basis points
+    uint256 public feePercentage;
+
+    event FeeUpdated(uint256 oldFee, uint256 newFee);
+
+    event OwnershipTransferStarted(address indexed currentOwner, address indexed pendingOwner);
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    event OwnershipTransferCancelled(address indexed currentOwner, address indexed cancelledPendingOwner);
+
+    error NotOwner();
+    error NotPendingOwner();
+    error FeeExceedsMaximum(uint256 requested, uint256 max);
+    error ZeroAddress();
+    error SameAddress();
+    error NoPendingTransfer();
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    /// @param initialFee Initial fee in basis points
+    constructor(uint256 initialFee) {
+        if (initialFee > MAX_FEE) {
+            revert FeeExceedsMaximum(initialFee, MAX_FEE);
+        }
+
+        owner = msg.sender;
+        feePercentage = initialFee;
+    }
+
+    /// @notice Updates the protocol fee
+    function updateFee(uint256 newFee) external onlyOwner {
+        if (newFee > MAX_FEE) {
+            revert FeeExceedsMaximum(newFee, MAX_FEE);
+        }
+
+        uint256 oldFee = feePercentage;
+        feePercentage = newFee;
+
+        emit FeeUpdated(oldFee, newFee);
+    }
+
+    /// @notice Calculates the fee for a given amount
+    function calculateFee(uint256 amount) external view returns (uint256) {
+        return (amount * feePercentage) / FEE_DENOMINATOR;
+    }
+
+    /// @notice Starts a two-step ownership transfer
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        if (newOwner == owner) revert SameAddress();
+
+        pendingOwner = newOwner;
+
+        emit OwnershipTransferStarted(owner, newOwner);
+    }
+
+    /// @notice Cancels a pending ownership transfer
+    function cancelOwnershipTransfer() external onlyOwner {
+        if (pendingOwner == address(0)) {
+            revert NoPendingTransfer();
+        }
+
+        address cancelled = pendingOwner;
+        pendingOwner = address(0);
+
+        emit OwnershipTransferCancelled(owner, cancelled);
+    }
+
+    /// @notice Accepts a pending ownership transfer
+    function acceptOwnership() external {
+        if (msg.sender != pendingOwner) {
+            revert NotPendingOwner();
+        }
+
+        address oldOwner = owner;
+
+        owner = pendingOwner;
+        pendingOwner = address(0);
+
+        emit OwnershipTransferred(oldOwner, owner);
+    }
+}
+
