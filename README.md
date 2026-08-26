@@ -85,3 +85,23 @@ Educational / portfolio project.
 Nicolas Pedernera
 
 This project is not intended for deployment with real funds without substantial additional development, testing, auditing, and risk-management infrastructure.
+
+## Testing & Verification
+
+The contract was tested in Remix VM to verify the main position lifecycle and safety checks.
+
+Verified functionality includes:
+
+- Opening leveraged long and short positions
+- Preventing multiple open positions for the same trader
+- PnL calculation
+- Liquidation status checks
+- Position closing
+- ETH collateral handling
+- Reversion of invalid operations through custom Solidity errors
+
+Example validation:
+
+`PositionAlreadyOpen` is correctly reverted when attempting to open a second position while an existing position is still active.
+
+The contract was deployed and interacted with successfully in Remix VM.
