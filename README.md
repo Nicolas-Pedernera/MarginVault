@@ -81,3 +81,15 @@ Before production deployment, the system would require:
 - Reentrancy and access-control review
 - Extensive liquidation and solvency testing
 - Deployment and monitoring infrastructure
+
+### FeeManager.sol
+
+Manages protocol fees and contract ownership.
+
+Core features:
+- Configurable protocol fee
+- Maximum fee limit of 20%
+- Fee calculation using basis points
+- Two-step ownership transfer
+- Ownership transfer cancellation
+- Owner-only fee updates
