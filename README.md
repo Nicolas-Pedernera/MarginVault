@@ -58,3 +58,13 @@ Designed and implemented the Solidity smart contracts for the MarginVault projec
 
 Nicolas Pedernera
 It is not intended for deployment with real funds without substantial additional development, testing, auditing, and risk-management infrastructure.
+
+## Core Smart Contract Functions
+
+- `openPosition()` — Opens leveraged long or short positions with ETH collateral.
+- `closePosition()` — Closes a position and calculates the resulting PnL.
+- `liquidate()` — Liquidates positions that exceed the defined loss threshold.
+- `getPnl()` — Returns the current unrealized PnL.
+- `isLiquidatable()` — Checks whether a position can be liquidated.
+- `updatePrice()` — Updates the asset price through the authorized oracle.
+- `transferOwnership()` / `acceptOwnership()` — Two-step ownership management.
