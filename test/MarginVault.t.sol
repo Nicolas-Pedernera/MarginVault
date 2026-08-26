@@ -12,22 +12,24 @@ contract MarginVaultTest is Test {
     receive() external payable {}
 
     function setUp() public {
-        vault = new MarginVault(10);
-        feeManager = new FeeManager(100); // 1%
+        vault = new MarginVault(10, 1000);
+        feeManager = new FeeManager(100);
     }
 
     function testConstructor() public view {
         assertEq(vault.maxLeverage(), 10);
+        assertEq(vault.currentPrice(), 1000);
     }
 
     function testOpenLongPosition() public {
         vault.openPosition{value: 1 ether}(5, true);
 
-        (uint256 collateral, uint256 leverage, bool isLong, bool isOpen) =
+        (uint256 collateral, uint256 leverage, uint256 entryPrice, bool isLong, bool isOpen) =
             vault.positions(address(this));
 
         assertEq(collateral, 1 ether);
         assertEq(leverage, 5);
+        assertEq(entryPrice, 1000);
         assertTrue(isLong);
         assertTrue(isOpen);
     }
@@ -35,34 +37,54 @@ contract MarginVaultTest is Test {
     function testOpenShortPosition() public {
         vault.openPosition{value: 1 ether}(3, false);
 
-        (uint256 collateral, uint256 leverage, bool isLong, bool isOpen) =
+        (uint256 collateral, uint256 leverage, uint256 entryPrice, bool isLong, bool isOpen) =
             vault.positions(address(this));
 
         assertEq(collateral, 1 ether);
         assertEq(leverage, 3);
+        assertEq(entryPrice, 1000);
         assertFalse(isLong);
         assertTrue(isOpen);
     }
 
-    function testGetPnl() public view {
-        uint256 pnl = vault.getPnl(address(this));
-        assertEq(pnl, 0);
+    function testLongPnlProfit() public {
+        vault.openPosition{value: 1 ether}(2, true);
+
+        vault.setCurrentPrice(1100);
+
+        int256 pnl = vault.getPnl(address(this));
+
+        assertEq(pnl, int256(0.2 ether));
     }
 
-    function testClosePosition() public {
-        vault.openPosition{value: 1 ether}(5, true);
+    function testLongPnlLoss() public {
+        vault.openPosition{value: 1 ether}(2, true);
 
-        vault.closePosition();
+        vault.setCurrentPrice(900);
 
-        (,,, bool isOpen) = vault.positions(address(this));
+        int256 pnl = vault.getPnl(address(this));
 
-        assertFalse(isOpen);
+        assertEq(pnl, -int256(0.2 ether));
     }
 
-    function testCannotCloseWithoutPosition() public {
-        vm.expectRevert("No open position");
+    function testShortPnlProfit() public {
+        vault.openPosition{value: 1 ether}(2, false);
 
-        vault.closePosition();
+        vault.setCurrentPrice(900);
+
+        int256 pnl = vault.getPnl(address(this));
+
+        assertEq(pnl, int256(0.2 ether));
+    }
+
+    function testShortPnlLoss() public {
+        vault.openPosition{value: 1 ether}(2, false);
+
+        vault.setCurrentPrice(1100);
+
+        int256 pnl = vault.getPnl(address(this));
+
+        assertEq(pnl, -int256(0.2 ether));
     }
 
     function testClosePositionReturnsCollateral() public {
@@ -85,12 +107,42 @@ contract MarginVaultTest is Test {
         assertEq(balanceAfterClose, balanceBeforeClose + 1 ether);
     }
 
+    function testClosePositionWithProfit() public {
+        address trader = address(0x123);
+
+        vm.deal(trader, 10 ether);
+
+        vm.startPrank(trader);
+        vault.openPosition{value: 1 ether}(2, true);
+        vm.stopPrank();
+
+        // Liquidez suficiente para pagar colateral + profit
+        vm.deal(address(vault), 2 ether);
+
+        vault.setCurrentPrice(1100);
+
+        uint256 balanceBeforeClose = trader.balance;
+
+        vm.prank(trader);
+        vault.closePosition();
+
+        uint256 balanceAfterClose = trader.balance;
+
+        assertEq(balanceAfterClose, balanceBeforeClose + 1.2 ether);
+    }
+
+    function testCannotCloseWithoutPosition() public {
+        vm.expectRevert("No open position");
+
+        vault.closePosition();
+    }
+
     function testOpenPositionWithFee() public {
         vault.setFeeManager(address(feeManager));
 
         vault.openPosition{value: 1 ether}(5, true);
 
-        (uint256 collateral,,,) = vault.positions(address(this));
+        (uint256 collateral,,,,) = vault.positions(address(this));
 
         uint256 expectedFee = (1 ether * 100) / 10_000;
 
@@ -121,5 +173,13 @@ contract MarginVaultTest is Test {
         vm.expectRevert("Not owner");
 
         vault.setFeeManager(address(feeManager));
+    }
+
+    function testOnlyOwnerCanUpdatePrice() public {
+        vm.prank(address(0x123));
+
+        vm.expectRevert("Not owner");
+
+        vault.setCurrentPrice(2000);
     }
 }

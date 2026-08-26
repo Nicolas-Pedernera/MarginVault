@@ -7,6 +7,7 @@ contract MarginVault {
     struct Position {
         uint256 collateral;
         uint256 leverage;
+        uint256 entryPrice;
         bool isLong;
         bool isOpen;
     }
@@ -19,28 +20,42 @@ contract MarginVault {
     FeeManager public feeManager;
 
     uint256 public accumulatedFees;
+    uint256 public currentPrice;
 
-    event PositionOpened(address indexed trader, uint256 collateral, uint256 leverage, bool isLong);
+    event PositionOpened(address indexed trader, uint256 collateral, uint256 leverage, uint256 entryPrice, bool isLong);
 
-    event PositionClosed(address indexed trader, uint256 collateral);
+    event PositionClosed(address indexed trader, uint256 collateral, int256 pnl);
 
     event FeeManagerUpdated(address indexed oldFeeManager, address indexed newFeeManager);
 
     event FeesWithdrawn(address indexed recipient, uint256 amount);
+
+    event PriceUpdated(uint256 oldPrice, uint256 newPrice);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
         _;
     }
 
-    constructor(uint256 _maxLeverage) {
+    constructor(uint256 _maxLeverage, uint256 _initialPrice) {
         require(_maxLeverage > 0, "Invalid leverage");
+        require(_initialPrice > 0, "Invalid initial price");
 
         maxLeverage = _maxLeverage;
+        currentPrice = _initialPrice;
         owner = msg.sender;
     }
 
     receive() external payable {}
+
+    function setCurrentPrice(uint256 newPrice) external onlyOwner {
+        require(newPrice > 0, "Invalid price");
+
+        uint256 oldPrice = currentPrice;
+        currentPrice = newPrice;
+
+        emit PriceUpdated(oldPrice, newPrice);
+    }
 
     function setFeeManager(address _feeManager) external onlyOwner {
         require(_feeManager != address(0), "Invalid fee manager");
@@ -55,7 +70,6 @@ contract MarginVault {
     function openPosition(uint256 leverage, bool isLong) external payable {
         require(msg.value > 0, "Collateral required");
         require(!positions[msg.sender].isOpen, "Position already open");
-
         require(leverage > 0 && leverage <= maxLeverage, "Invalid leverage");
 
         uint256 fee = 0;
@@ -70,13 +84,28 @@ contract MarginVault {
 
         accumulatedFees += fee;
 
-        positions[msg.sender] = Position({collateral: netCollateral, leverage: leverage, isLong: isLong, isOpen: true});
+        positions[msg.sender] = Position({
+            collateral: netCollateral, leverage: leverage, entryPrice: currentPrice, isLong: isLong, isOpen: true
+        });
 
-        emit PositionOpened(msg.sender, netCollateral, leverage, isLong);
+        emit PositionOpened(msg.sender, netCollateral, leverage, currentPrice, isLong);
     }
 
-    function getPnl(address) external pure returns (uint256) {
-        return 0;
+    function getPnl(address trader) public view returns (int256) {
+        Position memory position = positions[trader];
+
+        require(position.isOpen, "No open position");
+
+        int256 priceDifference = int256(currentPrice) - int256(position.entryPrice);
+
+        int256 pnl =
+            (int256(position.collateral) * int256(position.leverage) * priceDifference) / int256(position.entryPrice);
+
+        if (!position.isLong) {
+            pnl = -pnl;
+        }
+
+        return pnl;
     }
 
     function closePosition() external {
@@ -84,16 +113,33 @@ contract MarginVault {
 
         require(position.isOpen, "No open position");
 
+        int256 pnl = getPnl(msg.sender);
+
         uint256 collateral = position.collateral;
+
+        uint256 payout;
+
+        if (pnl >= 0) {
+            payout = collateral + uint256(pnl);
+        } else {
+            uint256 loss = uint256(-pnl);
+
+            if (loss >= collateral) {
+                payout = 0;
+            } else {
+                payout = collateral - loss;
+            }
+        }
 
         position.collateral = 0;
         position.leverage = 0;
+        position.entryPrice = 0;
         position.isLong = false;
         position.isOpen = false;
 
-        emit PositionClosed(msg.sender, collateral);
+        emit PositionClosed(msg.sender, payout, pnl);
 
-        (bool success,) = payable(msg.sender).call{value: collateral}("");
+        (bool success,) = payable(msg.sender).call{value: payout}("");
 
         require(success, "Collateral transfer failed");
     }
