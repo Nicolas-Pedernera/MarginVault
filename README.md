@@ -105,3 +105,10 @@ Example validation:
 `PositionAlreadyOpen` is correctly reverted when attempting to open a second position while an existing position is still active.
 
 The contract was deployed and interacted with successfully in Remix VM.
+
+## Related Projects
+
+This repository focuses specifically on leveraged trading mechanics — margin, liquidation, and PnL calculation. For other Solidity work in my portfolio with a different focus:
+
+- [defi-vault-contracts](https://github.com/Nicolas-Pedernera/defi-vault-contracts) — a simpler staking vault (deposit/withdraw only, no leverage), focused on demonstrating reentrancy protection with an automated Hardhat test suite that actively attacks the contract.
+- [remix-crypto-escrow](https://github.com/Nicolas-Pedernera/remix-crypto-escrow) — a two-party escrow contract, unrelated to trading or lending.
